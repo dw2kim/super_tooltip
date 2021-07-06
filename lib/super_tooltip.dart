@@ -157,10 +157,6 @@ class SuperTooltip {
   /// Enable targeting a widget
   final LayerLink? targetLink;
 
-  ///
-  /// Offset provided to fix potential position issue introduced by layerLink
-  final Offset? targetLinkOffset;
-
   Offset? _targetCenter;
   OverlayEntry? _backGroundOverlay;
   OverlayEntry? _ballonOverlay;
@@ -204,7 +200,6 @@ class SuperTooltip {
     this.blockOutsidePointerEvents = true,
     this.containsBackgroundOverlay = true,
     this.targetLink,
-    this.targetLinkOffset,
     this.animationDuration = 300,
   })  : assert((maxWidth ?? double.infinity) >= (minWidth ?? 0.0)),
         assert((maxHeight ?? double.infinity) >= (minHeight ?? 0.0));
@@ -225,14 +220,23 @@ class SuperTooltip {
   /// Displays the tooltip
   /// The center of [targetContext] is used as target of the arrow
   ///
+  /// Note, if [targetCenter] is provided, the target of arrow will be [targetCenter]
+  /// instead of the [targetContext]
+  ///
   /// Uses [overlay] to show tooltip or [targetContext]'s overlay if [overlay] is null
-  void show(BuildContext targetContext, {OverlayState? overlay}) {
+  void show(BuildContext targetContext,
+      {Offset? targetCenter, OverlayState? overlay}) {
     final renderBox = targetContext.findRenderObject() as RenderBox;
     overlay ??= Overlay.of(targetContext)!;
     final overlayRenderBox = overlay.context.findRenderObject() as RenderBox?;
 
-    _targetCenter = renderBox.localToGlobal(renderBox.size.center(Offset.zero),
-        ancestor: overlayRenderBox);
+    if (targetCenter != null) {
+      _targetCenter = targetCenter;
+    } else {
+      _targetCenter = renderBox.localToGlobal(
+          renderBox.size.center(Offset.zero),
+          ancestor: overlayRenderBox);
+    }
 
     // Create the background below the popup including the clipArea.
     if (containsBackgroundOverlay) {
@@ -309,7 +313,6 @@ class SuperTooltip {
             ? CompositedTransformFollower(
                 link: targetLink!,
                 showWhenUnlinked: false,
-                offset: targetLinkOffset ?? Offset.zero,
                 child: _AnimationWrapper(
                   builder: (context, opacity) => AnimatedOpacity(
                     duration: Duration(
