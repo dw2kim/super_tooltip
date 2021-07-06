@@ -149,6 +149,18 @@ class SuperTooltip {
   /// Enable background overlay
   final bool containsBackgroundOverlay;
 
+  ///
+  /// Change the duration of animation
+  final int animationDuration;
+
+  ///
+  /// Enable targeting a widget
+  final LayerLink? targetLink;
+
+  ///
+  /// Offset provided to fix potential position issue introduced by layerLink
+  final Offset? targetLinkOffset;
+
   Offset? _targetCenter;
   OverlayEntry? _backGroundOverlay;
   OverlayEntry? _ballonOverlay;
@@ -191,6 +203,9 @@ class SuperTooltip {
     this.dismissOnTapOutside = true,
     this.blockOutsidePointerEvents = true,
     this.containsBackgroundOverlay = true,
+    this.targetLink,
+    this.targetLinkOffset,
+    this.animationDuration = 300,
   })  : assert((maxWidth ?? double.infinity) >= (minWidth ?? 0.0)),
         assert((maxHeight ?? double.infinity) >= (minHeight ?? 0.0));
 
@@ -216,7 +231,8 @@ class SuperTooltip {
     overlay ??= Overlay.of(targetContext)!;
     final overlayRenderBox = overlay.context.findRenderObject() as RenderBox?;
 
-    _targetCenter = renderBox.localToGlobal(renderBox.size.center(Offset.zero), ancestor: overlayRenderBox);
+    _targetCenter = renderBox.localToGlobal(renderBox.size.center(Offset.zero),
+        ancestor: overlayRenderBox);
 
     // Create the background below the popup including the clipArea.
     if (containsBackgroundOverlay) {
@@ -236,7 +252,8 @@ class SuperTooltip {
         background = Listener(
           behavior: HitTestBehavior.translucent,
           onPointerDown: (event) {
-            if (!(shapeOverlay._getExclusion()?.contains(event.localPosition) ?? false)) {
+            if (!(shapeOverlay._getExclusion()?.contains(event.localPosition) ??
+                false)) {
               close();
             }
           },
@@ -287,33 +304,41 @@ class SuperTooltip {
     }
 
     _ballonOverlay = OverlayEntry(
-        builder: (context) => _AnimationWrapper(
-              builder: (context, opacity) => AnimatedOpacity(
-                duration: Duration(
-                  milliseconds: 300,
+      builder: (context) => CompositedTransformFollower(
+        link: targetLink ?? LayerLink(),
+        showWhenUnlinked: false,
+        offset: targetLinkOffset ?? Offset.zero,
+        child: _AnimationWrapper(
+          builder: (context, opacity) => AnimatedOpacity(
+            duration: Duration(
+              milliseconds: animationDuration,
+            ),
+            opacity: opacity,
+            child: Center(
+              child: CustomSingleChildLayout(
+                delegate: _PopupBallonLayoutDelegate(
+                  popupDirection: popupDirection,
+                  targetCenter: _targetCenter,
+                  minWidth: minWidth,
+                  maxWidth: maxWidth,
+                  minHeight: minHeight,
+                  maxHeight: maxHeight,
+                  outSidePadding: minimumOutSidePadding,
+                  top: top,
+                  bottom: bottom,
+                  left: left,
+                  right: right,
                 ),
-                opacity: opacity,
-                child: Center(
-                    child: CustomSingleChildLayout(
-                        delegate: _PopupBallonLayoutDelegate(
-                          popupDirection: popupDirection,
-                          targetCenter: _targetCenter,
-                          minWidth: minWidth,
-                          maxWidth: maxWidth,
-                          minHeight: minHeight,
-                          maxHeight: maxHeight,
-                          outSidePadding: minimumOutSidePadding,
-                          top: top,
-                          bottom: bottom,
-                          left: left,
-                          right: right,
-                        ),
-                        child: Stack(
-                          fit: StackFit.passthrough,
-                          children: [_buildPopUp(), _buildCloseButton()],
-                        ))),
+                child: Stack(
+                  fit: StackFit.passthrough,
+                  children: [_buildPopUp(), _buildCloseButton()],
+                ),
               ),
-            ));
+            ),
+          ),
+        ),
+      ),
+    );
 
     var overlays = <OverlayEntry>[];
 
@@ -333,10 +358,25 @@ class SuperTooltip {
         decoration: ShapeDecoration(
             color: backgroundColor,
             shadows: hasShadow
-                ? [BoxShadow(color: shadowColor, blurRadius: shadowBlurRadius, spreadRadius: shadowSpreadRadius)]
+                ? [
+                    BoxShadow(
+                        color: shadowColor,
+                        blurRadius: shadowBlurRadius,
+                        spreadRadius: shadowSpreadRadius)
+                  ]
                 : null,
-            shape: _BubbleShape(popupDirection, _targetCenter, borderRadius, arrowBaseWidth, arrowTipDistance,
-                borderColor, borderWidth, left, top, right, bottom)),
+            shape: _BubbleShape(
+                popupDirection,
+                _targetCenter,
+                borderRadius,
+                arrowBaseWidth,
+                arrowTipDistance,
+                borderColor,
+                borderWidth,
+                left,
+                top,
+                right,
+                bottom)),
         margin: _getBallonContainerMargin(),
         child: content,
       ),
@@ -419,7 +459,9 @@ class SuperTooltip {
   }
 
   EdgeInsets _getBallonContainerMargin() {
-    var top = (showCloseButton == ShowCloseButton.outside) ? closeButtonSize + 5 : 0.0;
+    var top = (showCloseButton == ShowCloseButton.outside)
+        ? closeButtonSize + 5
+        : 0.0;
 
     switch (popupDirection) {
       //
@@ -429,7 +471,8 @@ class SuperTooltip {
         );
 
       case TooltipDirection.up:
-        return EdgeInsets.only(bottom: arrowTipDistance + arrowLength, top: top);
+        return EdgeInsets.only(
+            bottom: arrowTipDistance + arrowLength, top: top);
 
       case TooltipDirection.left:
         return EdgeInsets.only(right: arrowTipDistance + arrowLength, top: top);
@@ -489,13 +532,20 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
       if (_left != null) {
         leftMostXtoTarget = _left;
       } else if (_right != null) {
-        leftMostXtoTarget = max(size.topLeft(Offset.zero).dx + _outSidePadding!,
-            size.topRight(Offset.zero).dx - _outSidePadding! - childSize.width - _right!);
+        leftMostXtoTarget = max(
+            size.topLeft(Offset.zero).dx + _outSidePadding!,
+            size.topRight(Offset.zero).dx -
+                _outSidePadding! -
+                childSize.width -
+                _right!);
       } else {
         leftMostXtoTarget = max(
             _outSidePadding!,
-            min(_targetCenter!.dx - childSize.width / 2,
-                size.topRight(Offset.zero).dx - _outSidePadding! - childSize.width));
+            min(
+                _targetCenter!.dx - childSize.width / 2,
+                size.topRight(Offset.zero).dx -
+                    _outSidePadding! -
+                    childSize.width));
       }
       return leftMostXtoTarget;
     }
@@ -505,13 +555,20 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
       if (_top != null) {
         topmostYtoTarget = _top;
       } else if (_bottom != null) {
-        topmostYtoTarget = max(size.topLeft(Offset.zero).dy + _outSidePadding!,
-            size.bottomRight(Offset.zero).dy - _outSidePadding! - childSize.height - _bottom!);
+        topmostYtoTarget = max(
+            size.topLeft(Offset.zero).dy + _outSidePadding!,
+            size.bottomRight(Offset.zero).dy -
+                _outSidePadding! -
+                childSize.height -
+                _bottom!);
       } else {
         topmostYtoTarget = max(
             _outSidePadding!,
-            min(_targetCenter!.dy - childSize.height / 2,
-                size.bottomRight(Offset.zero).dy - _outSidePadding! - childSize.height));
+            min(
+                _targetCenter!.dy - childSize.height / 2,
+                size.bottomRight(Offset.zero).dy -
+                    _outSidePadding! -
+                    childSize.height));
       }
       return topmostYtoTarget;
     }
@@ -552,7 +609,8 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
     void calcMinMaxWidth() {
       if (_left != null && _right != null) {
         calcMaxWidth = constraints.maxWidth - (_left! + _right!);
-      } else if ((_left != null && _right == null) || (_left == null && _right != null)) {
+      } else if ((_left != null && _right == null) ||
+          (_left == null && _right != null)) {
         // make sure that the sum of left, right + maxwidth isn't bigger than the screen width.
         var sideDelta = (_left ?? 0.0) + (_right ?? 0.0) + _outSidePadding!;
         if (calcMaxWidth > constraints.maxWidth - sideDelta) {
@@ -568,7 +626,8 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
     void calcMinMaxHeight() {
       if (_top != null && _bottom != null) {
         calcMaxHeight = constraints.maxHeight - (_top! + _bottom!);
-      } else if ((_top != null && _bottom == null) || (_top == null && _bottom != null)) {
+      } else if ((_top != null && _bottom == null) ||
+          (_top == null && _bottom != null)) {
         // make sure that the sum of top, bottom + maxHeight isn't bigger than the screen Height.
         var sideDelta = (_top ?? 0.0) + (_bottom ?? 0.0) + _outSidePadding!;
         if (calcMaxHeight > constraints.maxHeight - sideDelta) {
@@ -586,10 +645,12 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
       case TooltipDirection.down:
         calcMinMaxWidth();
         if (_bottom != null) {
-          calcMinHeight = calcMaxHeight = constraints.maxHeight - _bottom! - _targetCenter!.dy;
+          calcMinHeight = calcMaxHeight =
+              constraints.maxHeight - _bottom! - _targetCenter!.dy;
         } else {
-          calcMaxHeight =
-              min((_maxHeight ?? constraints.maxHeight), constraints.maxHeight - _targetCenter!.dy) - _outSidePadding!;
+          calcMaxHeight = min((_maxHeight ?? constraints.maxHeight),
+                  constraints.maxHeight - _targetCenter!.dy) -
+              _outSidePadding!;
         }
         break;
 
@@ -599,17 +660,21 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
         if (_top != null) {
           calcMinHeight = calcMaxHeight = _targetCenter!.dy - _top!;
         } else {
-          calcMaxHeight = min((_maxHeight ?? constraints.maxHeight), _targetCenter!.dy) - _outSidePadding!;
+          calcMaxHeight =
+              min((_maxHeight ?? constraints.maxHeight), _targetCenter!.dy) -
+                  _outSidePadding!;
         }
         break;
 
       case TooltipDirection.right:
         calcMinMaxHeight();
         if (_right != null) {
-          calcMinWidth = calcMaxWidth = constraints.maxWidth - _right! - _targetCenter!.dx;
+          calcMinWidth =
+              calcMaxWidth = constraints.maxWidth - _right! - _targetCenter!.dx;
         } else {
-          calcMaxWidth =
-              min((_maxWidth ?? constraints.maxWidth), constraints.maxWidth - _targetCenter!.dx) - _outSidePadding!;
+          calcMaxWidth = min((_maxWidth ?? constraints.maxWidth),
+                  constraints.maxWidth - _targetCenter!.dx) -
+              _outSidePadding!;
         }
         break;
 
@@ -618,7 +683,9 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
         if (_left != null) {
           calcMinWidth = calcMaxWidth = _targetCenter!.dx - _left!;
         } else {
-          calcMaxWidth = min((_maxWidth ?? constraints.maxWidth), _targetCenter!.dx) - _outSidePadding!;
+          calcMaxWidth =
+              min((_maxWidth ?? constraints.maxWidth), _targetCenter!.dx) -
+                  _outSidePadding!;
         }
         break;
 
@@ -629,7 +696,8 @@ class _PopupBallonLayoutDelegate extends SingleChildLayoutDelegate {
     var childConstraints = new BoxConstraints(
         minWidth: calcMinWidth > calcMaxWidth ? calcMaxWidth : calcMinWidth,
         maxWidth: calcMaxWidth,
-        minHeight: calcMinHeight > calcMaxHeight ? calcMaxHeight : calcMinHeight,
+        minHeight:
+            calcMinHeight > calcMaxHeight ? calcMaxHeight : calcMinHeight,
         maxHeight: calcMaxHeight);
 
     // print("Child constraints: $childConstraints");
@@ -655,8 +723,18 @@ class _BubbleShape extends ShapeBorder {
   final double? left, top, right, bottom;
   final TooltipDirection popupDirection;
 
-  _BubbleShape(this.popupDirection, this.targetCenter, this.borderRadius, this.arrowBaseWidth, this.arrowTipDistance,
-      this.borderColor, this.borderWidth, this.left, this.top, this.right, this.bottom);
+  _BubbleShape(
+      this.popupDirection,
+      this.targetCenter,
+      this.borderRadius,
+      this.arrowBaseWidth,
+      this.arrowTipDistance,
+      this.borderColor,
+      this.borderWidth,
+      this.left,
+      this.top,
+      this.right,
+      this.bottom);
 
   @override
   EdgeInsetsGeometry get dimensions => new EdgeInsets.all(10.0);
@@ -671,13 +749,17 @@ class _BubbleShape extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     //
-    late double topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius;
+    late double topLeftRadius,
+        topRightRadius,
+        bottomLeftRadius,
+        bottomRightRadius;
 
     Path _getLeftTopPath(Rect rect) {
       return new Path()
         ..moveTo(rect.left, rect.bottom - bottomLeftRadius)
         ..lineTo(rect.left, rect.top + topLeftRadius)
-        ..arcToPoint(Offset(rect.left + topLeftRadius, rect.top), radius: new Radius.circular(topLeftRadius))
+        ..arcToPoint(Offset(rect.left + topLeftRadius, rect.top),
+            radius: new Radius.circular(topLeftRadius))
         ..lineTo(rect.right - topRightRadius, rect.top)
         ..arcToPoint(Offset(rect.right, rect.top + topRightRadius),
             radius: new Radius.circular(topRightRadius), clockwise: true);
@@ -705,12 +787,17 @@ class _BubbleShape extends ShapeBorder {
       case TooltipDirection.down:
         return _getBottomRightPath(rect)
           ..lineTo(
-              min(max(targetCenter!.dx + arrowBaseWidth / 2, rect.left + borderRadius + arrowBaseWidth),
+              min(
+                  max(targetCenter!.dx + arrowBaseWidth / 2,
+                      rect.left + borderRadius + arrowBaseWidth),
                   rect.right - topRightRadius),
               rect.top)
-          ..lineTo(targetCenter!.dx, targetCenter!.dy + arrowTipDistance) // up to arrow tip   \
+          ..lineTo(targetCenter!.dx,
+              targetCenter!.dy + arrowTipDistance) // up to arrow tip   \
           ..lineTo(
-              max(min(targetCenter!.dx - arrowBaseWidth / 2, rect.right - topLeftRadius - arrowBaseWidth),
+              max(
+                  min(targetCenter!.dx - arrowBaseWidth / 2,
+                      rect.right - topLeftRadius - arrowBaseWidth),
                   rect.left + topLeftRadius),
               rect.top) //  down /
 
@@ -727,7 +814,9 @@ class _BubbleShape extends ShapeBorder {
           ..arcToPoint(Offset(rect.right - bottomRightRadius, rect.bottom),
               radius: new Radius.circular(bottomRightRadius), clockwise: true)
           ..lineTo(
-              min(max(targetCenter!.dx + arrowBaseWidth / 2, rect.left + bottomLeftRadius + arrowBaseWidth),
+              min(
+                  max(targetCenter!.dx + arrowBaseWidth / 2,
+                      rect.left + bottomLeftRadius + arrowBaseWidth),
                   rect.right - bottomRightRadius),
               rect.bottom)
 
@@ -736,7 +825,9 @@ class _BubbleShape extends ShapeBorder {
 
           //  down /
           ..lineTo(
-              max(min(targetCenter!.dx - arrowBaseWidth / 2, rect.right - bottomRightRadius - arrowBaseWidth),
+              max(
+                  min(targetCenter!.dx - arrowBaseWidth / 2,
+                      rect.right - bottomRightRadius - arrowBaseWidth),
                   rect.left + bottomLeftRadius),
               rect.bottom)
           ..lineTo(rect.left + bottomLeftRadius, rect.bottom)
@@ -750,11 +841,17 @@ class _BubbleShape extends ShapeBorder {
         return _getLeftTopPath(rect)
           ..lineTo(
               rect.right,
-              max(min(targetCenter!.dy - arrowBaseWidth / 2, rect.bottom - bottomRightRadius - arrowBaseWidth),
+              max(
+                  min(targetCenter!.dy - arrowBaseWidth / 2,
+                      rect.bottom - bottomRightRadius - arrowBaseWidth),
                   rect.top + topRightRadius))
-          ..lineTo(targetCenter!.dx - arrowTipDistance, targetCenter!.dy) // right to arrow tip   \
+          ..lineTo(targetCenter!.dx - arrowTipDistance,
+              targetCenter!.dy) // right to arrow tip   \
           //  left /
-          ..lineTo(rect.right, min(targetCenter!.dy + arrowBaseWidth / 2, rect.bottom - bottomRightRadius))
+          ..lineTo(
+              rect.right,
+              min(targetCenter!.dy + arrowBaseWidth / 2,
+                  rect.bottom - bottomRightRadius))
           ..lineTo(rect.right, rect.bottom - borderRadius)
           ..arcToPoint(Offset(rect.right - bottomRightRadius, rect.bottom),
               radius: new Radius.circular(bottomRightRadius), clockwise: true)
@@ -769,14 +866,19 @@ class _BubbleShape extends ShapeBorder {
               radius: new Radius.circular(topLeftRadius), clockwise: false)
           ..lineTo(
               rect.left,
-              max(min(targetCenter!.dy - arrowBaseWidth / 2, rect.bottom - bottomLeftRadius - arrowBaseWidth),
+              max(
+                  min(targetCenter!.dy - arrowBaseWidth / 2,
+                      rect.bottom - bottomLeftRadius - arrowBaseWidth),
                   rect.top + topLeftRadius))
 
           //left to arrow tip   /
           ..lineTo(targetCenter!.dx + arrowTipDistance, targetCenter!.dy)
 
           //  right \
-          ..lineTo(rect.left, min(targetCenter!.dy + arrowBaseWidth / 2, rect.bottom - bottomLeftRadius))
+          ..lineTo(
+              rect.left,
+              min(targetCenter!.dy + arrowBaseWidth / 2,
+                  rect.bottom - bottomLeftRadius))
           ..lineTo(rect.left, rect.bottom - bottomLeftRadius)
           ..arcToPoint(Offset(rect.left + bottomLeftRadius, rect.bottom),
               radius: new Radius.circular(bottomLeftRadius), clockwise: false);
@@ -863,8 +965,18 @@ class _BubbleShape extends ShapeBorder {
 
   @override
   ShapeBorder scale(double t) {
-    return new _BubbleShape(popupDirection, targetCenter, borderRadius, arrowBaseWidth, arrowTipDistance, borderColor,
-        borderWidth, left, top, right, bottom);
+    return new _BubbleShape(
+        popupDirection,
+        targetCenter,
+        borderRadius,
+        arrowBaseWidth,
+        arrowTipDistance,
+        borderColor,
+        borderWidth,
+        left,
+        top,
+        right,
+        bottom);
   }
 }
 
@@ -876,7 +988,8 @@ class _ShapeOverlay extends ShapeBorder {
   final ClipAreaShape clipAreaShape;
   final double clipAreaCornerRadius;
 
-  _ShapeOverlay(this.clipRect, this.clipAreaShape, this.clipAreaCornerRadius, this.outsideBackgroundColor);
+  _ShapeOverlay(this.clipRect, this.clipAreaShape, this.clipAreaCornerRadius,
+      this.outsideBackgroundColor);
 
   @override
   EdgeInsetsGeometry get dimensions => new EdgeInsets.all(10.0);
@@ -908,16 +1021,20 @@ class _ShapeOverlay extends ShapeBorder {
       exclusion = new Path()
         ..moveTo(clipRect!.left + clipAreaCornerRadius, clipRect!.top)
         ..lineTo(clipRect!.right - clipAreaCornerRadius, clipRect!.top)
-        ..arcToPoint(Offset(clipRect!.right, clipRect!.top + clipAreaCornerRadius),
+        ..arcToPoint(
+            Offset(clipRect!.right, clipRect!.top + clipAreaCornerRadius),
             radius: new Radius.circular(clipAreaCornerRadius))
         ..lineTo(clipRect!.right, clipRect!.bottom - clipAreaCornerRadius)
-        ..arcToPoint(Offset(clipRect!.right - clipAreaCornerRadius, clipRect!.bottom),
+        ..arcToPoint(
+            Offset(clipRect!.right - clipAreaCornerRadius, clipRect!.bottom),
             radius: new Radius.circular(clipAreaCornerRadius))
         ..lineTo(clipRect!.left + clipAreaCornerRadius, clipRect!.bottom)
-        ..arcToPoint(Offset(clipRect!.left, clipRect!.bottom - clipAreaCornerRadius),
+        ..arcToPoint(
+            Offset(clipRect!.left, clipRect!.bottom - clipAreaCornerRadius),
             radius: new Radius.circular(clipAreaCornerRadius))
         ..lineTo(clipRect!.left, clipRect!.top + clipAreaCornerRadius)
-        ..arcToPoint(Offset(clipRect!.left + clipAreaCornerRadius, clipRect!.top),
+        ..arcToPoint(
+            Offset(clipRect!.left + clipAreaCornerRadius, clipRect!.top),
             radius: new Radius.circular(clipAreaCornerRadius))
         ..close();
     }
@@ -926,12 +1043,14 @@ class _ShapeOverlay extends ShapeBorder {
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    canvas.drawPath(getOuterPath(rect), new Paint()..color = outsideBackgroundColor);
+    canvas.drawPath(
+        getOuterPath(rect), new Paint()..color = outsideBackgroundColor);
   }
 
   @override
   ShapeBorder scale(double t) {
-    return new _ShapeOverlay(clipRect, clipAreaShape, clipAreaCornerRadius, outsideBackgroundColor);
+    return new _ShapeOverlay(
+        clipRect, clipAreaShape, clipAreaCornerRadius, outsideBackgroundColor);
   }
 }
 
