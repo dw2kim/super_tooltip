@@ -157,6 +157,10 @@ class SuperTooltip {
   /// Enable targeting a widget
   final LayerLink? targetLink;
 
+  ///
+  /// Adding offset to the tooltip
+  final Offset? tooltipOffset;
+
   Offset? _targetCenter;
   OverlayEntry? _backGroundOverlay;
   OverlayEntry? _ballonOverlay;
@@ -201,6 +205,7 @@ class SuperTooltip {
     this.containsBackgroundOverlay = true,
     this.targetLink,
     this.animationDuration = 300,
+    this.tooltipOffset,
   })  : assert((maxWidth ?? double.infinity) >= (minWidth ?? 0.0)),
         assert((maxHeight ?? double.infinity) >= (minHeight ?? 0.0));
 
@@ -313,6 +318,7 @@ class SuperTooltip {
             ? CompositedTransformFollower(
                 link: targetLink!,
                 showWhenUnlinked: false,
+                offset: tooltipOffset ?? Offset.zero,
                 child: _AnimationWrapper(
                   builder: (context, opacity) => AnimatedOpacity(
                     duration: Duration(
