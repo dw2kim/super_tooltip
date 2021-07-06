@@ -304,40 +304,72 @@ class SuperTooltip {
     }
 
     _ballonOverlay = OverlayEntry(
-      builder: (context) => CompositedTransformFollower(
-        link: targetLink ?? LayerLink(),
-        showWhenUnlinked: false,
-        offset: targetLinkOffset ?? Offset.zero,
-        child: _AnimationWrapper(
-          builder: (context, opacity) => AnimatedOpacity(
-            duration: Duration(
-              milliseconds: animationDuration,
-            ),
-            opacity: opacity,
-            child: Center(
-              child: CustomSingleChildLayout(
-                delegate: _PopupBallonLayoutDelegate(
-                  popupDirection: popupDirection,
-                  targetCenter: _targetCenter,
-                  minWidth: minWidth,
-                  maxWidth: maxWidth,
-                  minHeight: minHeight,
-                  maxHeight: maxHeight,
-                  outSidePadding: minimumOutSidePadding,
-                  top: top,
-                  bottom: bottom,
-                  left: left,
-                  right: right,
+      builder: (context) {
+        return targetLink != null
+            ? CompositedTransformFollower(
+                link: targetLink!,
+                showWhenUnlinked: false,
+                offset: targetLinkOffset ?? Offset.zero,
+                child: _AnimationWrapper(
+                  builder: (context, opacity) => AnimatedOpacity(
+                    duration: Duration(
+                      milliseconds: animationDuration,
+                    ),
+                    opacity: opacity,
+                    child: Center(
+                      child: CustomSingleChildLayout(
+                        delegate: _PopupBallonLayoutDelegate(
+                          popupDirection: popupDirection,
+                          targetCenter: _targetCenter,
+                          minWidth: minWidth,
+                          maxWidth: maxWidth,
+                          minHeight: minHeight,
+                          maxHeight: maxHeight,
+                          outSidePadding: minimumOutSidePadding,
+                          top: top,
+                          bottom: bottom,
+                          left: left,
+                          right: right,
+                        ),
+                        child: Stack(
+                          fit: StackFit.passthrough,
+                          children: [_buildPopUp(), _buildCloseButton()],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Stack(
-                  fit: StackFit.passthrough,
-                  children: [_buildPopUp(), _buildCloseButton()],
+              )
+            : _AnimationWrapper(
+                builder: (context, opacity) => AnimatedOpacity(
+                  duration: Duration(
+                    milliseconds: animationDuration,
+                  ),
+                  opacity: opacity,
+                  child: Center(
+                    child: CustomSingleChildLayout(
+                      delegate: _PopupBallonLayoutDelegate(
+                        popupDirection: popupDirection,
+                        targetCenter: _targetCenter,
+                        minWidth: minWidth,
+                        maxWidth: maxWidth,
+                        minHeight: minHeight,
+                        maxHeight: maxHeight,
+                        outSidePadding: minimumOutSidePadding,
+                        top: top,
+                        bottom: bottom,
+                        left: left,
+                        right: right,
+                      ),
+                      child: Stack(
+                        fit: StackFit.passthrough,
+                        children: [_buildPopUp(), _buildCloseButton()],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
+              );
+      },
     );
 
     var overlays = <OverlayEntry>[];
