@@ -225,23 +225,14 @@ class SuperTooltip {
   /// Displays the tooltip
   /// The center of [targetContext] is used as target of the arrow
   ///
-  /// Note, if [targetCenter] is provided, the target of arrow will be [targetCenter]
-  /// instead of the [targetContext]
-  ///
   /// Uses [overlay] to show tooltip or [targetContext]'s overlay if [overlay] is null
-  void show(BuildContext targetContext,
-      {Offset? targetCenter, OverlayState? overlay}) {
+  void show(BuildContext targetContext, {OverlayState? overlay}) {
     final renderBox = targetContext.findRenderObject() as RenderBox;
     overlay ??= Overlay.of(targetContext)!;
     final overlayRenderBox = overlay.context.findRenderObject() as RenderBox?;
 
-    if (targetCenter != null) {
-      _targetCenter = targetCenter;
-    } else {
-      _targetCenter = renderBox.localToGlobal(
-          renderBox.size.center(Offset.zero),
-          ancestor: overlayRenderBox);
-    }
+    _targetCenter = renderBox.localToGlobal(renderBox.size.center(Offset.zero),
+        ancestor: overlayRenderBox);
 
     // Create the background below the popup including the clipArea.
     if (containsBackgroundOverlay) {
