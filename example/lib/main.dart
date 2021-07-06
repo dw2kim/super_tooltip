@@ -29,6 +29,7 @@ class _MyHomePageState extends State<MyHomePage> {
   SuperTooltip? tooltip;
 
   final LayerLink link = LayerLink();
+  final buttonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -36,16 +37,29 @@ class _MyHomePageState extends State<MyHomePage> {
       body: SafeArea(
         child: ListView(
           children: [
-            Builder(
-              builder: (BuildContext buttonContext) {
-                return CompositedTransformTarget(
+            SizedBox(
+              height: 100,
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                CompositedTransformTarget(
                   link: link,
-                  child: ElevatedButton(
-                    onPressed: () => onTap(buttonContext),
-                    child: Text('press me'),
+                  child: Builder(
+                    builder: (BuildContext buttonContext) {
+                      return ElevatedButton(
+                        key: buttonKey,
+                        onPressed: () => onTap(buttonContext),
+                        child: Text('dont press me'),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+                ElevatedButton(
+                  onPressed: () {},
+                  child: Text('press me'),
+                ),
+              ],
             ),
           ],
         ),
@@ -72,7 +86,6 @@ class _MyHomePageState extends State<MyHomePage> {
       containsBackgroundOverlay: false,
       minimumOutSidePadding: 20,
       targetLink: link,
-      targetLinkOffset: Offset(0, -50),
       animationDuration: 0,
       content: Material(
         child: Text(
@@ -83,7 +96,21 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
+    tooltip!.show(targetContext,
+        targetCenter: Offset(buttonKey.globalPaintBounds.width / 2,
+            buttonKey.globalPaintBounds.height / 2));
+  }
+}
 
-    tooltip!.show(targetContext);
+extension GlobalKeyExtension on GlobalKey {
+  Rect get globalPaintBounds {
+    final renderObject = currentContext?.findRenderObject();
+    var translation = renderObject?.getTransformTo(null).getTranslation();
+    if (translation != null) {
+      return renderObject!.paintBounds
+          .shift(Offset(translation.x, translation.y));
+    } else {
+      return renderObject!.paintBounds.shift(Offset(0, 0));
+    }
   }
 }
