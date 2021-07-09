@@ -7,6 +7,17 @@ import 'package:flutter/widgets.dart';
 enum TooltipDirection { up, down, left, right }
 enum ShowCloseButton { inside, outside, none }
 enum ClipAreaShape { oval, rectangle }
+enum TargetMode {
+  topLeft,
+  topCenter,
+  topRight,
+  centerLeft,
+  center,
+  centerRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
+}
 
 typedef OutSideTapHandler = void Function();
 
@@ -158,8 +169,12 @@ class SuperTooltip {
   final LayerLink? targetLink;
 
   ///
-  /// Adding offset to the tooltip
+  /// Adding offset to the tooltip (this is for only when targetLink is provided)
   final Offset? tooltipOffset;
+
+  ///
+  /// Select where the tooltip arrow should target
+  final TargetMode targetMode;
 
   Offset? _targetCenter;
   OverlayEntry? _backGroundOverlay;
@@ -206,6 +221,7 @@ class SuperTooltip {
     this.targetLink,
     this.animationDuration = 300,
     this.tooltipOffset,
+    this.targetMode = TargetMode.center,
   })  : assert((maxWidth ?? double.infinity) >= (minWidth ?? 0.0)),
         assert((maxHeight ?? double.infinity) >= (minHeight ?? 0.0));
 
@@ -231,8 +247,53 @@ class SuperTooltip {
     overlay ??= Overlay.of(targetContext)!;
     final overlayRenderBox = overlay.context.findRenderObject() as RenderBox?;
 
-    _targetCenter = renderBox.localToGlobal(renderBox.size.center(Offset.zero),
-        ancestor: overlayRenderBox);
+    switch (targetMode) {
+      case TargetMode.topLeft:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.topLeft(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.topCenter:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.topCenter(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.topRight:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.topRight(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.centerLeft:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.centerLeft(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.center:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.center(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.centerRight:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.centerRight(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.bottomLeft:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.bottomLeft(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.bottomCenter:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.bottomCenter(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+      case TargetMode.bottomRight:
+        _targetCenter = renderBox.localToGlobal(
+            renderBox.size.bottomRight(Offset.zero),
+            ancestor: overlayRenderBox);
+        break;
+    }
 
     // Create the background below the popup including the clipArea.
     if (containsBackgroundOverlay) {
@@ -1121,5 +1182,3 @@ class _AnimationWrapperState extends State<_AnimationWrapper> {
     return widget.builder!(context, opacity);
   }
 }
-
-enum SuperTooltipDismissBehaviour { none, onTap, onPointerDown }

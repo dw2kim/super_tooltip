@@ -86,8 +86,8 @@ class _MyCardState extends State<MyCard> {
     final yPos = offset.dy;
 
     tooltip = SuperTooltip(
-      popupDirection: TooltipDirection.left,
-      arrowTipDistance: 15.0,
+      popupDirection: TooltipDirection.down,
+      arrowTipDistance: 5,
       arrowBaseWidth: 40.0,
       arrowLength: 40.0,
       borderColor: Colors.green,
@@ -100,6 +100,7 @@ class _MyCardState extends State<MyCard> {
       targetLink: link,
       animationDuration: 0,
       tooltipOffset: Offset(-xPos, -yPos),
+      targetMode: TargetMode.bottomLeft,
       content: Material(
         child: Text(
           "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, "
